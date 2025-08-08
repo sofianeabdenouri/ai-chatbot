@@ -1,10 +1,12 @@
-// src/components/Chatbot.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { personas } from '../prompts/personas';
 import { translations } from '../i18n/translations';
 import PersonaSelector from './PersonaSelector';
 import mammoth from 'mammoth';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_KEY;
 
@@ -15,22 +17,52 @@ function Chatbot() {
   const [language, setLanguage] = useState('fr');
   const [voices, setVoices] = useState([]);
   const [muted, setMuted] = useState(() => localStorage.getItem('chatbot_muted') === 'true');
-  const [fileUploadName, setFileUploadName] = useState(null);
-  const [fileContent, setFileContent] = useState(null);
-  const chatEndRef = useRef(null);
-
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [customPrompt, setCustomPrompt] = useState(() =>
+    personas[selectedPersona]?.prompt?.[language] || ''
+  );
+  const [tokenCount, setTokenCount] = useState(0);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('chatbot_darkmode') !== 'false');
+  const [partialResponse, setPartialResponse] = useState('');
+  const [tokenizer, setTokenizer] = useState(null);
   const [messages, setMessages] = useState(() => {
     const saved = localStorage.getItem(`chatbot_messages_${selectedPersona}`);
     return saved ? JSON.parse(saved) : [];
   });
 
+  const t = translations[language];
+
+  useEffect(() => {
+    document.body.classList.remove('dark', 'light');
+    document.body.classList.add(darkMode ? 'dark' : 'light');
+    document.documentElement.style.height = '100%';
+    document.body.style.minHeight = '100dvh';
+  }, [darkMode]);
+
   useEffect(() => {
     const saved = localStorage.getItem(`chatbot_messages_${selectedPersona}`);
     setMessages(saved ? JSON.parse(saved) : []);
     setInput('');
-    setFileUploadName(null);
-    setFileContent(null);
-  }, [selectedPersona]);
+    setCustomPrompt(personas[selectedPersona]?.prompt?.[language] || '');
+  }, [selectedPersona, language]);
+
+  useEffect(() => {
+    async function loadTokenizer() {
+      const { get_encoding } = await import('@dqbd/tiktoken');
+      setTokenizer(get_encoding('cl100k_base'));
+    }
+    loadTokenizer();
+  }, []);
+
+  useEffect(() => {
+    if (!tokenizer) return;
+    const contextText = uploadedFiles.length
+      ? uploadedFiles.map(f => `Fichier: "${f.name}"\nContenu:\n${f.content}`).join('\n\n') + '\n\n'
+      : '';
+    const combined = contextText + input.trim();
+    const tokens = tokenizer.encode(combined).length;
+    setTokenCount(tokens);
+  }, [input, uploadedFiles, tokenizer]);
 
   useEffect(() => {
     localStorage.setItem(`chatbot_messages_${selectedPersona}`, JSON.stringify(messages));
@@ -41,20 +73,14 @@ function Chatbot() {
   }, [muted]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  useEffect(() => {
     const loadVoices = () => {
       const availableVoices = window.speechSynthesis.getVoices();
-      if (availableVoices.length) {
-        setVoices(availableVoices);
-      }
+      if (availableVoices.length) setVoices(availableVoices);
     };
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }, []);
-const t = translations[language]; 
+
   const speak = (text) => {
     if (muted || !('speechSynthesis' in window)) return;
     const utterance = new SpeechSynthesisUtterance(text);
@@ -68,31 +94,25 @@ const t = translations[language];
 
   async function sendMessage(e) {
     e.preventDefault();
-    if (!input.trim() && !fileUploadName) return;
+    if (!input.trim() && uploadedFiles.length === 0) return;
 
-    const contextPrefix = fileContent
-      ? `Tu as accès au contenu d'un fichier appelé "${fileUploadName}". Utilise son contenu pour répondre de manière pertinente et utile à la question qui suit. N'inclus pas le texte brut du fichier dans ta réponse.\n\nContenu:\n${fileContent}\n\n`
+    const contextPrefix = uploadedFiles.length
+      ? `Tu as accès à ${uploadedFiles.length} fichier(s) joint(s).\n\n` +
+        uploadedFiles.map(f => `Fichier: "${f.name}"\nContenu:\n${f.content}`).join('\n\n') + '\n\n'
       : '';
 
-    const userInput = fileUploadName || input.trim();
+    const userInput = input.trim();
     const fullUserMessage = contextPrefix + userInput;
-
     const newMessage = { role: 'user', content: fullUserMessage };
 
-    setMessages((msgs) => [
-      ...msgs,
-      { role: 'user', content: userInput }
-    ]);
-
+    setMessages(msgs => [...msgs, { role: 'user', content: userInput }]);
     setInput('');
-    setFileUploadName(null);
-    setFileContent(null);
     setLoading(true);
+    setPartialResponse('');
 
     try {
-      const systemPrompt = personas[selectedPersona]?.prompt?.[language];
-      if (!systemPrompt || typeof systemPrompt !== "string") {
-        console.error("Prompt invalide:", systemPrompt);
+      const systemPrompt = customPrompt;
+      if (!systemPrompt || typeof systemPrompt !== 'string') {
         setMessages(msgs => [...msgs, { role: 'assistant', content: "Erreur : prompt invalide." }]);
         setLoading(false);
         return;
@@ -100,90 +120,124 @@ const t = translations[language];
 
       const recentMessages = [...messages, newMessage].slice(-10);
 
-      const apiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: "POST",
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: 'gpt-4o',
           messages: [
-            { role: "system", content: systemPrompt },
+            { role: 'system', content: systemPrompt },
             ...recentMessages
           ],
-          max_tokens: 180,
+          stream: true,
         }),
       });
 
-      const data = await apiRes.json();
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
 
-      if (data.error) {
-        console.error("OpenAI API error:", data.error);
-        throw new Error(data.error.message);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
+        for (let line of lines) {
+          const json = line.replace(/^data:\s*/, '');
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const token = parsed.choices?.[0]?.delta?.content || '';
+            fullText += token;
+            setPartialResponse(fullText);
+          } catch (err) {}
+        }
       }
 
-      const answer = data.choices?.[0]?.message?.content || "Erreur API";
-      setMessages(msgs => [...msgs, { role: 'assistant', content: answer }]);
-      speak(answer);
+      setPartialResponse('');
+      setMessages(msgs => [...msgs, { role: 'assistant', content: fullText }]);
+      speak(fullText);
     } catch (err) {
-      console.error(err);
       setMessages(msgs => [...msgs, { role: 'assistant', content: "Erreur lors de la requête API." }]);
     }
 
     setLoading(false);
   }
 
-  function handleClear() {
-    setMessages([]);
-    localStorage.removeItem(`chatbot_messages_${selectedPersona}`);
-  }
+  async function handleFiles(fileList) {
+    const newFiles = [];
+    for (const file of fileList) {
+      let content = '';
+      const reader = new FileReader();
 
-  async function handleFile(file) {
-    if (!file) return;
-    setFileUploadName(file.name);
-    const reader = new FileReader();
-
-    if (file.type === "application/pdf") {
-      reader.onload = async () => {
-        const typedArray = new Uint8Array(reader.result);
-        const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
-        let text = '';
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const content = await page.getTextContent();
-          const pageText = content.items.map(item => item.str).join(' ');
-          text += pageText + '\n';
+      const fileContent = await new Promise((resolve) => {
+        if (file.type === "application/pdf") {
+          reader.onload = async () => {
+            const typedArray = new Uint8Array(reader.result);
+            const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+            let text = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+              const page = await pdf.getPage(i);
+              const content = await page.getTextContent();
+              const pageText = content.items.map(item => item.str).join(' ');
+              text += pageText + '\n';
+            }
+            resolve(text);
+          };
+          reader.readAsArrayBuffer(file);
+        } else if (file.name.endsWith(".docx")) {
+          reader.onload = async () => {
+            const arrayBuffer = reader.result;
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            resolve(result.value);
+          };
+          reader.readAsArrayBuffer(file);
+        } else {
+          reader.onload = (event) => resolve(event.target.result);
+          reader.readAsText(file);
         }
-        setFileContent(text);
-      };
-      reader.readAsArrayBuffer(file);
-    } else if (file.name.endsWith(".docx")) {
-      reader.onload = async () => {
-        const arrayBuffer = reader.result;
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        setFileContent(result.value);
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.onload = (event) => setFileContent(event.target.result);
-      reader.readAsText(file);
+      });
+
+      newFiles.push({ name: file.name, content: fileContent, type: file.type });
     }
+    setUploadedFiles(prev => [...prev, ...newFiles]);
   }
+
+  const buttonStyle = {
+    backgroundColor: darkMode ? '#444' : '#ddd',
+    color: darkMode ? '#fff' : '#000',
+    border: '1px solid',
+    borderColor: darkMode ? '#666' : '#ccc',
+    padding: '6px 10px',
+    borderRadius: 4,
+    cursor: 'pointer'
+  };
 
   return (
     <div className="chatbot-container">
-      <div className="language-selector" style={{ marginBottom: 10 }}>
+      <div style={{ marginBottom: 10 }}>
         <label>{t.langLabel}: </label>
-        <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+        <select
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          className="language-select"
+        >
           <option value="fr">Français</option>
           <option value="en">English</option>
         </select>
       </div>
 
-      <div className="tts-toggle" style={{ marginBottom: 10 }}>
-        <button onClick={() => setMuted(prev => !prev)} className="tts-btn" title="Activer/Désactiver voix">
+      <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+        <button onClick={() => setMuted(prev => !prev)} style={buttonStyle}>
           {muted ? "🔇" : "🔊"}
+        </button>
+        <button onClick={() => setDarkMode(prev => !prev)} style={buttonStyle}>
+          {darkMode ? '🌙 Dark' : '☀️ Light'}
         </button>
       </div>
 
@@ -195,68 +249,44 @@ const t = translations[language];
         language={language}
       />
 
+      <textarea
+        value={customPrompt}
+        onChange={(e) => setCustomPrompt(e.target.value)}
+        rows={5}
+        className="custom-prompt"
+      />
+
       <div className="chat-history">
         {messages.map((msg, idx) => (
           <div key={idx} className={`msg ${msg.role}`}>
-            <span>{msg.role === 'user' ? `${t.you}:` : `${t.bot}:`} </span>
-            {msg.content}
+            <span style={{ fontWeight: 'bold' }}>{msg.role === 'user' ? `${t.you}:` : `${t.bot}:`}</span>
+            <ReactMarkdown children={msg.content} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} />
           </div>
         ))}
-        <div ref={chatEndRef} />
+        {partialResponse && (
+          <div className="msg assistant">
+            <span>{t.bot}: </span>
+            <ReactMarkdown children={partialResponse} remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]} />
+          </div>
+        )}
       </div>
 
-      {fileUploadName && (
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontSize: 18, marginRight: 8 }}>
-            {fileUploadName.endsWith('.pdf') ? '📄' :
-             fileUploadName.endsWith('.docx') ? '📃' : '📝'}
-          </span>
-          <span style={{ marginRight: 8 }}>{fileUploadName}</span>
-          <button onClick={() => { setFileUploadName(null); setFileContent(null); }}>🗑️</button>
-        </div>
-      )}
-
-      <form onSubmit={sendMessage} className="chat-input-form">
+      <form onSubmit={sendMessage} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <input
           type="text"
           value={input}
           disabled={loading}
           onChange={e => setInput(e.target.value)}
-          placeholder={fileUploadName || t.inputPlaceholder}
           autoFocus
+          className="text-input"
         />
-        <button type="submit" disabled={loading || (!input.trim() && !fileUploadName)}>{t.send}</button>
-        <button type="button" onClick={handleClear} style={{ marginLeft: 8 }}>{t.clear}</button>
+        <button type="submit" style={buttonStyle}>{t.send}</button>
+        <button type="button" onClick={() => setMessages([])} style={buttonStyle}>{t.clear}</button>
       </form>
 
-      <div
-        onDrop={(e) => {
-          e.preventDefault();
-          const file = e.dataTransfer.files?.[0];
-          if (file) handleFile(file);
-        }}
-        onDragOver={(e) => e.preventDefault()}
-        style={{
-          border: '2px dashed #ccc',
-          padding: '16px',
-          marginTop: 10,
-          textAlign: 'center',
-          borderRadius: 6,
-          cursor: 'pointer'
-        }}
-        onClick={() => document.getElementById('fileInput').click()}
-      >
-        {t.fileDropLabel}
-        <input
-          id="fileInput"
-          type="file"
-          accept=".txt,.md,.csv,.json,.log,.html,.xml,.pdf,.docx"
-          onChange={(e) => handleFile(e.target.files[0])}
-          style={{ display: 'none' }}
-        />
+      <div className="token-count">
+        {language === 'fr' ? `Jetons estimés : ${tokenCount}` : `Estimated tokens: ${tokenCount}`}
       </div>
-
-      {loading && <div className="loading">⏳...</div>}
     </div>
   );
 }

@@ -1,21 +1,24 @@
 .chatbot-container {
   max-width: 480px;
   margin: 36px auto;
-  background: #18181c;
+  background: inherit;
   border-radius: 14px;
   box-shadow: 0 3px 18px #0006;
   padding: 20px;
-  color: #fff;
+  color: inherit;
   font-family: 'Segoe UI', sans-serif;
 }
 .chat-history {
   min-height: 240px;
   max-height: 320px;
   overflow-y: auto;
-  background: #23232a;
+  background: #f6f7fb;
   border-radius: 10px;
   padding: 12px;
   margin-bottom: 18px;
+}
+body.dark .chat-history {
+  background: #23232a;
 }
 .msg {
   margin: 8px 0;
@@ -25,12 +28,22 @@
   font-size: 1rem;
 }
 .msg.user {
-  background: #292953;
+  background: #e0e0ff;
+  color: #000;
   text-align: right;
 }
+body.dark .msg.user {
+  background: #292953;
+  color: #f0f0f0;
+}
 .msg.assistant {
-  background: #1e5236;
+  background: #d9fdd3;
+  color: #000;
   text-align: left;
+}
+body.dark .msg.assistant {
+  background: #1e5236;
+  color: #f0f0f0;
 }
 .persona-selector {
   display: flex;
@@ -39,14 +52,18 @@
   justify-content: center;
 }
 .persona-selector button {
-  background: #353557;
-  color: #fff;
+  background: #eee;
+  color: #000;
   border: none;
   border-radius: 7px;
   padding: 6px 16px;
   cursor: pointer;
   font-weight: bold;
   transition: 0.2s;
+}
+body.dark .persona-selector button {
+  background: #353557;
+  color: #fff;
 }
 .persona-selector button.selected {
   background: #ffd600;
@@ -62,16 +79,26 @@
   border: 1px solid #555;
   padding: 8px;
   font-size: 1rem;
+  background: #fff;
+  color: #000;
+}
+body.dark .chat-input-form input[type="text"] {
+  background: #2a2a2a;
+  color: #f0f0f0;
 }
 .chat-input-form button {
-  background: #353557;
-  color: #fff;
+  background: #eee;
+  color: #000;
   border: none;
   border-radius: 7px;
   padding: 6px 14px;
   cursor: pointer;
   font-weight: bold;
   transition: 0.2s;
+}
+body.dark .chat-input-form button {
+  background: #353557;
+  color: #fff;
 }
 .loading {
   text-align: center;
