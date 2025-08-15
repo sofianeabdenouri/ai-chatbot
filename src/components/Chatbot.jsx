@@ -4,12 +4,17 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { personas } from '../prompts/personas';
 import { translations } from '../i18n/translations';
-import PersonaSelector from './PersonaSelector';
+// import PersonaSelector from './PersonaSelector'; // ⛔️ replaced with dropdown
 import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import * as pdfjsLib from 'pdfjs-dist';               // ✅ v5+
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+
+// >>>>>>>>>>>>> pdf.js worker (Vite + pdfjs v5) <<<<<<<<<<<<<
+import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 const OPENAI_API_KEY = import.meta.env.VITE_OPENAI_KEY;
 
@@ -72,6 +77,7 @@ function Chatbot() {
   const [sessionId, setSessionId] = useState('');
   const [sessionList, setSessionList] = useState([]); // array of ids
   const [fileError, setFileError] = useState('');
+  const [historyCollapsed, setHistoryCollapsed] = useState(false); // 👈 NEW: collapse toggle
 
   const bottomRef = useRef(null);
   const t = useMemo(() => translations[language], [language]);
@@ -196,7 +202,7 @@ function Chatbot() {
 
     setMessages(msgs => [...msgs, { role: 'user', content: userInput }]);
     setInput('');
-    setUploadedFiles([]); // reset after send
+    setUploadedFiles([]); // reset après envoi
     setLoading(true);
     setPartialResponse('');
 
@@ -252,8 +258,10 @@ function Chatbot() {
     setFileError('');
 
     for (const file of fileList) {
+      const isPdfByExt = /\.pdf$/i.test(file.name);
       const supported =
         file.type === 'application/pdf' ||
+        (file.type === '' && isPdfByExt) ||
         file.type === 'text/plain' ||
         (file.type === '' && /\.(txt|md|csv|json|html|xml)$/i.test(file.name)) ||
         file.name.endsWith('.docx');
@@ -266,23 +274,33 @@ function Chatbot() {
       const fileContent = await new Promise((resolve) => {
         const reader = new FileReader();
 
-        if (file.type === 'application/pdf') {
+        if (file.type === 'application/pdf' || (file.type === '' && isPdfByExt)) {
           reader.onload = async () => {
-            const typedArray = new Uint8Array(reader.result);
-            const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
-            let text = '';
-            for (let i = 1; i <= pdf.numPages; i++) {
-              const page = await pdf.getPage(i);
-              const content = await page.getTextContent();
-              text += content.items.map(item => item.str).join(' ') + '\n';
+            try {
+              const typedArray = new Uint8Array(reader.result);
+              const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+              let text = '';
+              for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(item => item.str).join(' ') + '\n';
+              }
+              resolve(text);
+            } catch (err) {
+              setFileError(`Erreur PDF: ${err?.message || err}`);
+              resolve(''); // ne pas bloquer la pile
             }
-            resolve(text);
           };
           reader.readAsArrayBuffer(file);
         } else if (file.name.endsWith('.docx')) {
           reader.onload = async () => {
-            const result = await mammoth.extractRawText({ arrayBuffer: reader.result });
-            resolve(result.value);
+            try {
+              const result = await mammoth.extractRawText({ arrayBuffer: reader.result });
+              resolve(result.value);
+            } catch (err) {
+              setFileError(`Erreur DOCX: ${err?.message || err}`);
+              resolve('');
+            }
           };
           reader.readAsArrayBuffer(file);
         } else {
@@ -291,7 +309,7 @@ function Chatbot() {
         }
       });
 
-      newFiles.push({ name: file.name, content: fileContent, type: file.type });
+      newFiles.push({ name: file.name, content: fileContent, type: file.type || (isPdfByExt ? 'application/pdf' : '') });
     }
 
     setUploadedFiles(prev => [...prev, ...newFiles]);
@@ -320,6 +338,9 @@ function Chatbot() {
 
   const getTitleFor = (id) => localStorage.getItem(`chatbot_title_${id}`) || 'Untitled';
 
+  // Persona dropdown label helper
+  const personaLabel = (key) => personas[key]?.name || key;
+
   return (
     <div className="chatbot-container">
       {/* HEADER */}
@@ -347,13 +368,26 @@ function Chatbot() {
       </header>
 
       {/* CONTENT: SIDEBAR + MAIN */}
-      <div className="chat-content">
+<div className={`chat-content${historyCollapsed ? ' history-hidden' : ''}`}>
         {/* SIDEBAR */}
-        <aside className="history-sidebar">
+        <aside className={`history-sidebar ${historyCollapsed ? 'collapsed' : ''}`}>
+          {/* NEW: collapse toggle above New chat */}
+          {!historyCollapsed && (
+  <button
+    className="collapse-history-btn"
+    onClick={() => setHistoryCollapsed(true)}
+    aria-label="Masquer l'historique"
+    title="Masquer l'historique"
+    type="button"
+  >
+    ❮
+  </button>
+)}
+
           <button className="new-chat-btn" onClick={newChat}>➕ New chat</button>
           <h3 className="sidebar-title">Chat History</h3>
 
-          <ul className="history-list">
+          <ul id="historyList" className="history-list" hidden={historyCollapsed}>
             {sessionList.map(id => {
               const label = getTitleFor(id);
               return (
@@ -378,17 +412,37 @@ function Chatbot() {
             })}
           </ul>
         </aside>
+{historyCollapsed && (
+  <button
+    className="reveal-history-btn"
+    onClick={() => setHistoryCollapsed(false)}
+    aria-label="Afficher l'historique"
+    title="Afficher l'historique"
+    type="button"
+  >
+    ❯
+  </button>
+)}
 
         {/* MAIN COLUMN (centered narrow column) */}
         <main className="chat-main">
           <div className="chat-main-inner">
-            <PersonaSelector
-              personas={personas}
-              selectedPersona={selectedPersona}
-              onSelect={setSelectedPersona}
-              translations={translations}
-              language={language}
-            />
+            {/* REPLACED PersonaSelector with a simple dropdown */}
+            <div className="persona-row">
+              <label htmlFor="personaSelect" className="persona-label">Persona</label>
+              <select
+                id="personaSelect"
+                className="persona-select"
+                value={selectedPersona}
+                onChange={(e) => setSelectedPersona(e.target.value)}
+              >
+                {Object.keys(personas).map((key) => (
+                  <option key={key} value={key}>
+                    {personaLabel(key)}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* message stream */}
             <div className="chat-history">
