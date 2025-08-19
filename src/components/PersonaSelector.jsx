@@ -8,6 +8,7 @@ function PersonaSelector({ personas, selectedPersona, onSelect, translations, la
           key={key}
           className={selectedPersona === key ? 'selected' : ''}
           onClick={() => onSelect(key)}
+          aria-pressed={selectedPersona === key}
         >
           {translations[language].personas[persona.nameKey] || persona.nameKey}
         </button>

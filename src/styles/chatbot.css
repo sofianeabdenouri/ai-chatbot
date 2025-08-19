@@ -238,7 +238,6 @@ body.dark .history-item { background: #2a2a35; color: #f0f0f0; border-color: rgb
   text-overflow: ellipsis;
 }
 
-/* × delete button */
 .delete-chat-btn {
   background: transparent;
   border: 0;
@@ -247,9 +246,18 @@ body.dark .history-item { background: #2a2a35; color: #f0f0f0; border-color: rgb
   font-weight: 800;
   line-height: 1;
   opacity: 0.85;
-  transition: opacity var(--transition), transform var(--transition);
+  color: #444; /* gris en light */
+  transition: opacity var(--transition), transform var(--transition), color var(--transition);
 }
-.delete-chat-btn:hover { opacity: 1; transform: scale(1.05); }
+body.dark .delete-chat-btn {
+  color: #fff; /* blanc en dark par défaut */
+}
+.delete-chat-btn:hover {
+  opacity: 1;
+  transform: scale(1.07);
+  color: #f87171 !important; /* ROUGE en hover partout */
+  background: none !important; /* pas de pill */
+}
 
 .persona-row {
   display: flex;
@@ -355,3 +363,364 @@ body.dark .collapse-history-btn:hover {
   color: #fff;
   border-color: var(--primary-hover);
 }
+.global-drag-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  background: rgba(75, 85, 255, 0.22);
+  backdrop-filter: blur(5px) brightness(1.13);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: dragFadeIn 0.2s;
+}
+
+.global-drag-overlay-inner {
+  background: rgba(255,255,255,0.88);
+  border: 3px dashed var(--primary);
+  border-radius: 32px;
+  padding: 48px 56px;
+  box-shadow: 0 4px 32px rgba(80,90,255,0.10);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: scaleDragOverlay 0.28s;
+}
+
+.global-drag-icon {
+  font-size: 3.7rem;
+  color: var(--primary);
+  animation: iconBounce 1.1s infinite alternate;
+}
+
+.global-drag-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #242480;
+  text-shadow: 0 1px 6px #fff8;
+  letter-spacing: 0.04em;
+}
+
+body.dark .global-drag-overlay-inner {
+  background: rgba(26,29,53,0.97);
+  border-color: #a5b4fc;
+}
+body.dark .global-drag-text {
+  color: #a5b4fc;
+  text-shadow: 0 2px 12px #0009;
+}
+
+@keyframes dragFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleDragOverlay {
+  from { transform: scale(0.98); }
+  to { transform: scale(1); }
+}
+@keyframes iconBounce {
+  0% { transform: translateY(0) scale(1); }
+  80% { transform: translateY(-6px) scale(1.08); }
+  100% { transform: translateY(0) scale(1); }
+}
+.lang-toggle-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 15px;
+  border-radius: 18px;
+  cursor: pointer;
+  color: #1e1e2f; /* ou #111 */
+  transition: background 0.16s, color 0.18s;
+}
+.lang-toggle-btn:hover {
+  background: #e0e7ff;
+  color: var(--primary);
+}
+body.dark .lang-toggle-btn {
+  color: #f3f4f6;
+}
+body.dark .lang-toggle-btn:hover {
+  background: #2e3459;
+  color: #a5b4fc; /* bleu clair, ou #fff si tu veux */
+}
+.header-actions button,
+.header-actions .lang-toggle-btn {
+  background: none;
+  border: none;
+  font-size: 1.13rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 16px;
+  cursor: pointer;
+  color: #23232a;
+  margin-left: 7px;
+  transition: background 0.18s, color 0.16s;
+}
+.header-actions button:hover,
+.header-actions .lang-toggle-btn:hover {
+  background: #e0e7ff;
+  color: var(--primary);
+}
+
+body.dark .header-actions button,
+body.dark .header-actions .lang-toggle-btn {
+  color: #f3f4f6;
+}
+body.dark .header-actions button:hover,
+body.dark .header-actions .lang-toggle-btn:hover {
+  background: #232342;
+  color: #a5b4fc;
+}
+.persona-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap; /* Pour pas que ça dépasse si y’a bcp de personas */
+}
+
+.persona-selector button {
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 1.5px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 1.01rem;
+  cursor: pointer;
+  transition: 
+    background 0.16s, 
+    color 0.16s, 
+    border-color 0.18s, 
+    box-shadow 0.16s;
+  outline: none;
+}
+
+.persona-selector button.selected,
+.persona-selector button:active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary-hover);
+  box-shadow: 0 2px 8px rgba(79,70,229,0.12);
+}
+
+.persona-selector button:hover:not(.selected) {
+  background: #ede9fe;
+  color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+body.dark .persona-selector button {
+  color: #a5b4fc;
+  border-color: #a5b4fc;
+  background: #232342;
+}
+body.dark .persona-selector button.selected,
+body.dark .persona-selector button:active {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #a5b4fc;
+}
+body.dark .persona-selector button:hover:not(.selected) {
+  background: #312e81;
+  color: #fff;
+  border-color: #818cf8;
+}
+.persona-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+/* Pour le label */
+.persona-label {
+  font-weight: 700;
+  opacity: 0.93;
+  font-size: 1.08rem;
+  letter-spacing: 0.01em;
+}
+
+.persona-select {
+  flex: 1;
+  padding: 12px 22px;
+  border-radius: 2rem;
+  border: 2px solid var(--primary);
+  background: linear-gradient(90deg, #ede9fe 0%, #f5f3ff 100%);
+  color: #282d44;
+  font-weight: 700;
+  font-size: 1.08rem;
+  outline: none;
+  transition:
+    border-color 0.23s,
+    background 0.23s,
+    box-shadow 0.24s,
+    color 0.22s;
+  box-shadow: 0 3px 12px 0 rgba(79, 70, 229, 0.04);
+  appearance: none;
+  cursor: pointer;
+  position: relative;
+}
+
+.persona-select:hover, .persona-select:focus {
+  border-color: var(--primary-hover);
+  background: linear-gradient(90deg, #e0e7ff 0%, #ede9fe 100%);
+  box-shadow: 0 4px 20px 0 rgba(79, 70, 229, 0.09);
+  color: var(--primary-hover);
+}
+
+body.dark .persona-select {
+  background: linear-gradient(90deg, #242449 0%, #232342 100%);
+  color: #a5b4fc;
+  border-color: #a5b4fc;
+  box-shadow: 0 2px 12px 0 rgba(80, 90, 255, 0.09);
+}
+
+body.dark .persona-select:hover, body.dark .persona-select:focus {
+  background: linear-gradient(90deg, #303075 0%, #232347 100%);
+  border-color: #818cf8;
+  color: #fff;
+  box-shadow: 0 4px 20px 0 rgba(129, 140, 248, 0.13);
+}
+
+/* Global style for react-select with prefix persona__ */
+.persona__control {
+  border-radius: 2rem !important;
+  min-height: 52px !important;
+  font-weight: 700 !important;
+  font-size: 1.13rem !important;
+  border: 2px solid var(--primary);
+  background: linear-gradient(90deg, #ede9fe 0%, #f5f3ff 100%);
+  box-shadow: 0 4px 24px 0 rgba(79,70,229,0.07);
+  transition: box-shadow 0.23s, border-color 0.23s, background 0.23s;
+  outline: none !important;
+}
+.persona__control:hover, .persona__control--is-focused {
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 2.5px #818cf833, 0 2px 28px 0 rgba(79,70,229,0.10);
+  background: linear-gradient(90deg, #ede9fe 10%, #dbeafe 90%);
+}
+
+body.dark .persona__control {
+  background: linear-gradient(90deg, #232342 0%, #292955 100%);
+  border-color: #a5b4fc;
+  color: #a5b4fc;
+  box-shadow: 0 4px 22px 0 rgba(80,90,255,0.07);
+}
+body.dark .persona__control:hover, body.dark .persona__control--is-focused {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2.5px #6366f155, 0 2px 32px 0 #4f46e577;
+  background: linear-gradient(90deg, #2b2965 0%, #232342 100%);
+}
+
+.persona__single-value {
+  font-weight: 800;
+  color: #4f46e5;
+  letter-spacing: 0.01em;
+}
+body.dark .persona__single-value {
+  color: #a5b4fc;
+}
+
+/* DROPDOWN menu floating glass+shadow effect */
+.persona__menu {
+  border-radius: 1.4rem !important;
+  margin-top: 9px !important;
+  padding: 0.5rem 0;
+  box-shadow: 0 14px 50px 0 #6d28d933, 0 1.5px 9px 0 #4f46e522;
+  border: none !important;
+  background: rgba(255,255,255,0.90) !important;
+  backdrop-filter: blur(7px) brightness(1.12);
+  animation: scaleDragOverlay 0.20s;
+  overflow: hidden;
+}
+body.dark .persona__menu {
+  background: rgba(36,36,73,0.97) !important;
+  box-shadow: 0 14px 50px 0 #818cf899, 0 1.5px 9px 0 #23234255;
+  backdrop-filter: blur(8px) brightness(0.94);
+}
+
+/* Fancy options */
+.persona__option {
+  padding: 14px 26px !important;
+  border-radius: 18px !important;
+  font-weight: 700 !important;
+  font-size: 1.04rem;
+  color: #2e1065;
+  transition: background 0.17s, color 0.18s, box-shadow 0.19s;
+  cursor: pointer;
+}
+body.dark .persona__option { color: #a5b4fc; }
+.persona__option--is-focused {
+  background: linear-gradient(90deg, #ede9fe 0%, #818cf8 100%) !important;
+  color: #4f46e5 !important;
+  box-shadow: 0 1px 9px 0 #6366f122;
+}
+body.dark .persona__option--is-focused {
+  background: linear-gradient(90deg, #312e81 0%, #4f46e5 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 11px 0 #818cf866;
+}
+.persona__option--is-selected {
+  background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 2px #a5b4fc33;
+}
+body.dark .persona__option--is-selected {
+  background: linear-gradient(90deg, #6366f1 0%, #4338ca 100%) !important;
+  color: #fff !important;
+}
+
+/* Scrollbar in dropdown */
+.persona__menu-list::-webkit-scrollbar {
+  width: 7px;
+  background: transparent;
+}
+.persona__menu-list::-webkit-scrollbar-thumb {
+  background: #818cf8;
+  border-radius: 6px;
+}
+body.dark .persona__menu-list::-webkit-scrollbar-thumb {
+  background: #4f46e5;
+}
+
+/* Remove outline blue native chrome on control focus */
+.persona__control:focus, .persona__control--is-focused {
+  box-shadow: 0 0 0 2px #4f46e5 !important;
+  outline: none !important;
+}
+
+/* Custom caret (dropdown arrow) */
+.persona__indicator-separator { display: none !important; }
+.persona__dropdown-indicator svg {
+  width: 28px; height: 28px;
+  stroke: #4f46e5 !important;
+  stroke-width: 3.2;
+  transition: stroke 0.19s;
+}
+body.dark .persona__dropdown-indicator svg {
+  stroke: #a5b4fc !important;
+}
+.persona__dropdown-indicator {
+  padding-right: 20px !important;
+  transition: transform 0.22s;
+}
+.persona__control--menu-is-open .persona__dropdown-indicator {
+  transform: rotate(-180deg);
+}
+
+/* Anim for menu */
+@keyframes scaleDragOverlay {
+  from { transform: scale(0.96); opacity: 0.3; }
+  to   { transform: scale(1); opacity: 1; }
+}
+

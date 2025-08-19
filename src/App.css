@@ -22,3 +22,8 @@ body.dark ::-webkit-scrollbar-thumb {
 body.light ::-webkit-scrollbar-thumb {
   background-color: #aaa;
 }
+.persona__control { border-radius: 2rem; min-height: 46px; font-weight: 700; }
+.persona__menu { border-radius: 1rem; }
+.persona__option--is-selected { background: #4f46e5 !important; color: #fff !important; }
+body.dark .persona__control { background: #232342; color: #a5b4fc; border-color: #a5b4fc; }
+body.dark .persona__menu { background: #232342; color: #a5b4fc; }

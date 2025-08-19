@@ -1,34 +1,97 @@
 export const translations = {
   fr: {
-    langLabel: "Langue",
-    send: "Envoyer",
-    clear: "Effacer",
-    inputPlaceholder: "Tape ton message et appuie sur Entrée...",
-    you: "Toi",
+    you: "Vous",
     bot: "Bot",
-    fileDropLabel: "Glisser-déposer un fichier ici ou cliquer pour choisir",
+    send: "Envoyer",
+    sendAria: "Envoyer le message",
+    langLabel: "Langue",
+    appTitle: "AI Chatbot",
+    langShort: "FR",
+    langToggleTooltip: "Basculer la langue",
+    langToggleAria: "Basculer la langue",
+    export: "Exporter",
+    mute: "Activer le son",
+    unmute: "Couper le son",
+    themeDark: "Mode sombre",
+    themeLight: "Mode clair",
+
+    newChat: "Nouveau chat",
+    newChatTitle: "Nouveau chat", 
+    chatHistory: "Historique",
+    hideHistory: "Masquer l’historique",
+    showHistory: "Afficher l’historique",
+
+    persona: "Persona",
+    uploadFiles: "Téléverser des fichiers",
+    remove: "Supprimer",
+    deleteChat: "Supprimer le chat",
+    deleteConfirm: "Supprimer ce chat définitivement ?",
+
+    dropHere: "Déposez vos fichiers ici",
+    errorApi: "Erreur lors de la requête API.",
+    errorUnsupported: "Type de fichier non pris en charge",
+    errorPdf: "Erreur PDF",
+    errorDocx: "Erreur DOCX",
+
+    attachNoticeBefore: "Tu as accès à",
+    attachNoticeAfter: "fichier(s) joint(s).",
+    fileLabel: "Fichier:",
+    contentLabel: "Contenu:",
+
     personas: {
-      pragmaticCoach: "Coach Pratique",
-      friendlyBuddy: "Pote Sympa",
-      minimalistTherapist: "Thérapeute Minimaliste",
-      cynicalPhilosopher: "Philosophe Cynique",
-      dryMentor: "Mentor Sec"
+      pragmaticCoach: "Coach pragmatique",
+      minimalistTherapist: "Thérapeute minimaliste",
+      cynicalPhilosopher: "Philosophe cynique",
+      dryMentor: "Mentor sec",
+      friendlyBuddy: "Pote sympa"
     }
   },
+
   en: {
-    langLabel: "Language",
-    send: "Send",
-    clear: "Clear",
-    inputPlaceholder: "Type your message and press Enter...",
     you: "You",
     bot: "Bot",
-    fileDropLabel: "Drag & drop a file here or click to select one",
+    send: "Send",
+    sendAria: "Send message",       
+    langLabel: "Language",
+    appTitle: "AI Chatbot",
+    langShort: "EN",
+    langToggleTooltip: "Switch language",
+    langToggleAria: "Switch language",
+    export: "Export",
+    mute: "Unmute",
+    unmute: "Mute",
+    themeDark: "Dark mode",
+    themeLight: "Light mode",
+
+    newChat: "New chat",
+    newChatTitle: "New chat",
+    chatHistory: "Chat History",
+    hideHistory: "Hide history",
+    showHistory: "Show history",
+
+    persona: "Persona",
+    uploadFiles: "Upload files",
+    remove: "Remove",
+    deleteChat: "Delete chat",
+    deleteConfirm: "Delete this chat permanently?",
+
+    dropHere: "Drop your files here",
+    errorApi: "Error during API request.",
+    errorUnsupported: "Unsupported file type",
+    errorPdf: "PDF error",
+    errorDocx: "DOCX error",
+
+    attachNoticeBefore: "You have access to",
+    attachNoticeAfter: "attached file(s).",
+    fileLabel: "File:",
+    contentLabel: "Content:",
+
     personas: {
       pragmaticCoach: "Pragmatic Coach",
-      friendlyBuddy: "Friendly Buddy",
       minimalistTherapist: "Minimalist Therapist",
       cynicalPhilosopher: "Cynical Philosopher",
-      dryMentor: "Dry Mentor"
+      dryMentor: "Dry Mentor",
+      friendlyBuddy: "Friendly Buddy"
     }
   }
 };

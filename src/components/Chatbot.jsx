@@ -2,14 +2,15 @@
 // History titles = smart 4-ish word summary of first user message (math-aware). No Clear button.
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import '../styles/chatbot.css'; 
 import { personas } from '../prompts/personas';
 import { translations } from '../i18n/translations';
-// import PersonaSelector from './PersonaSelector'; // ⛔️ replaced with dropdown
 import mammoth from 'mammoth';
-import * as pdfjsLib from 'pdfjs-dist';               // ✅ v5+
+import * as pdfjsLib from 'pdfjs-dist';             
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import Select from 'react-select';
 
 // >>>>>>>>>>>>> pdf.js worker (Vite + pdfjs v5) <<<<<<<<<<<<<
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
@@ -78,6 +79,12 @@ function Chatbot() {
   const [sessionList, setSessionList] = useState([]); // array of ids
   const [fileError, setFileError] = useState('');
   const [historyCollapsed, setHistoryCollapsed] = useState(false); // 👈 NEW: collapse toggle
+  const [isDragging, setIsDragging] = useState(false);
+const personaOptions = Object.keys(personas).map(key => ({
+  value: key,
+  label: personas[key].name[language] || key
+}));
+
 
   const bottomRef = useRef(null);
   const t = useMemo(() => translations[language], [language]);
@@ -87,7 +94,7 @@ function Chatbot() {
   );
 
   useEffect(() => {
-    document.title = 'AI Chatbot';
+document.title = t.appTitle;
     document.body.classList.remove('dark', 'light');
     document.body.classList.add(darkMode ? 'dark' : 'light');
     localStorage.setItem('chatbot_darkmode', darkMode);
@@ -133,6 +140,55 @@ function Chatbot() {
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }, []);
 
+useEffect(() => {
+  let dragCounter = 0;
+
+  const onDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter += 1;
+    setIsDragging(true);
+  };
+
+  const onDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const onDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter -= 1;
+    if (dragCounter <= 0) {
+      setIsDragging(false);
+      dragCounter = 0;
+    }
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCounter = 0;
+    if (e.dataTransfer?.files?.length) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+
+  document.addEventListener('dragenter', onDragEnter);
+  document.addEventListener('dragover', onDragOver);
+  document.addEventListener('dragleave', onDragLeave);
+  document.addEventListener('drop', onDrop);
+
+  return () => {
+    document.removeEventListener('dragenter', onDragEnter);
+    document.removeEventListener('dragover', onDragOver);
+    document.removeEventListener('dragleave', onDragLeave);
+    document.removeEventListener('drop', onDrop);
+  };
+}, []);
+
+
   // autoscroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -156,12 +212,12 @@ function Chatbot() {
     setMessages([]);
     setUploadedFiles([]);
     setInput('');
-    localStorage.setItem(`chatbot_title_${id}`, 'New chat');
+localStorage.setItem(`chatbot_title_${id}`, t.newChatTitle);
     setSessionList(prev => [id, ...prev.filter(s => s !== id)]);
   };
 
   const deleteChat = (id) => {
-    if (!window.confirm('Delete this chat permanently?')) return;
+if (!window.confirm(t.deleteConfirm)) return;
     localStorage.removeItem(`chatbot_messages_${id}`);
     localStorage.removeItem(`chatbot_title_${id}`);
     setSessionList(prev => {
@@ -183,10 +239,11 @@ function Chatbot() {
     if (!input.trim() && uploadedFiles.length === 0) return;
 
     const contextPrefix = uploadedFiles.length
-      ? `Tu as accès à ${uploadedFiles.length} fichier(s) joint(s).\n\n` +
-        uploadedFiles.map(f => `Fichier: "${f.name}"\nContenu:\n${f.content}`).join('\n\n') +
-        '\n\n'
-      : '';
+  ? `${t.attachNoticeBefore} ${uploadedFiles.length} ${t.attachNoticeAfter}\n\n` +
+    uploadedFiles.map(f => `${t.fileLabel} "${f.name}"\n${t.contentLabel}\n${f.content}`).join('\n\n') +
+    '\n\n'
+  : '';
+
 
     const userInput = input.trim();
     const fullUserMessage = contextPrefix + userInput;
@@ -200,7 +257,14 @@ function Chatbot() {
       setSessionList(prev => (prev.includes(sessionId) ? prev : [sessionId, ...prev]));
     }
 
-    setMessages(msgs => [...msgs, { role: 'user', content: userInput }]);
+setMessages(msgs => [
+  ...msgs,
+  {
+    role: 'user',
+    content: userInput,
+    files: uploadedFiles.length ? [...uploadedFiles] : undefined
+  }
+]);
     setInput('');
     setUploadedFiles([]); // reset après envoi
     setLoading(true);
@@ -247,7 +311,7 @@ function Chatbot() {
       setMessages(msgs => [...msgs, { role: 'assistant', content: fullText }]);
       speak(fullText);
     } catch (err) {
-      setMessages(msgs => [...msgs, { role: 'assistant', content: 'Erreur lors de la requête API.' }]);
+setMessages(msgs => [...msgs, { role: 'assistant', content: t.errorApi }]);
     }
 
     setLoading(false);
@@ -267,7 +331,7 @@ function Chatbot() {
         file.name.endsWith('.docx');
 
       if (!supported) {
-        setFileError(`Unsupported file type: ${file.name}`);
+setFileError(`${t.errorUnsupported}: ${file.name}`);
         continue;
       }
 
@@ -287,7 +351,7 @@ function Chatbot() {
               }
               resolve(text);
             } catch (err) {
-              setFileError(`Erreur PDF: ${err?.message || err}`);
+setFileError(`${t.errorPdf}: ${err?.message || err}`);
               resolve(''); // ne pas bloquer la pile
             }
           };
@@ -298,7 +362,7 @@ function Chatbot() {
               const result = await mammoth.extractRawText({ arrayBuffer: reader.result });
               resolve(result.value);
             } catch (err) {
-              setFileError(`Erreur DOCX: ${err?.message || err}`);
+setFileError(`${t.errorDocx}: ${err?.message || err}`);
               resolve('');
             }
           };
@@ -345,25 +409,38 @@ function Chatbot() {
     <div className="chatbot-container">
       {/* HEADER */}
       <header className="chat-header">
-        <h1 className="chat-title">AI Chatbot</h1>
+<h1 className="chat-title">{t.appTitle}</h1>
         <div className="header-actions">
-          <label>{t.langLabel}: </label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="language-select"
-          >
-            <option value="fr">Français</option>
-            <option value="en">English</option>
-          </select>
+        <button
+  className="lang-toggle-btn"
+  onClick={() => setLanguage(lang => (lang === 'fr' ? 'en' : 'fr'))}
+  title={t.langToggleTooltip}
+  aria-label={t.langToggleAria}
+>
+  🌐 {t.langShort}
+</button>
 
-          <button onClick={exportChat} className="export-button">💾 Export</button>
-          <button onClick={() => setMuted(prev => !prev)} className="mute-toggle">
-            {muted ? '🔇' : '🔊'}
-          </button>
-          <button onClick={() => setDarkMode(prev => !prev)} className="theme-toggle">
-            {darkMode ? '🌙 Dark' : '☀️ Light'}
-          </button>
+
+
+<button onClick={exportChat} className="export-button">💾 {t.export}</button>
+          <button
+  onClick={() => setMuted(prev => !prev)}
+  className="mute-toggle"
+  title={muted ? t.unmute : t.mute}
+  aria-label={muted ? t.unmute : t.mute}
+>
+  {muted ? '🔇' : '🔊'}
+</button>
+
+         <button
+  onClick={() => setDarkMode(prev => !prev)}
+  className="theme-toggle"
+  title={darkMode ? t.themeDark : t.themeLight}
+  aria-label={darkMode ? t.themeDark : t.themeLight}
+>
+  {darkMode ? '🌙' : '☀️'}
+</button>
+
         </div>
       </header>
 
@@ -374,18 +451,19 @@ function Chatbot() {
           {/* NEW: collapse toggle above New chat */}
           {!historyCollapsed && (
   <button
-    className="collapse-history-btn"
-    onClick={() => setHistoryCollapsed(true)}
-    aria-label="Masquer l'historique"
-    title="Masquer l'historique"
-    type="button"
-  >
-    ❮
-  </button>
+  className="collapse-history-btn"
+  onClick={() => setHistoryCollapsed(true)}
+  aria-label={t.hideHistory}
+  title={t.hideHistory}
+  type="button"
+>
+  ❮
+</button>
+
 )}
 
-          <button className="new-chat-btn" onClick={newChat}>➕ New chat</button>
-          <h3 className="sidebar-title">Chat History</h3>
+<button className="new-chat-btn" onClick={newChat}>➕ {t.newChat}</button>
+<h3 className="sidebar-title">{t.chatHistory}</h3>
 
           <ul id="historyList" className="history-list" hidden={historyCollapsed}>
             {sessionList.map(id => {
@@ -400,28 +478,30 @@ function Chatbot() {
                     {label}
                   </button>
                   <button
-                    className="delete-chat-btn"
-                    onClick={(e) => { e.stopPropagation(); deleteChat(id); }}
-                    title="Delete chat"
-                    aria-label="Delete chat"
-                  >
-                    ×
-                  </button>
+  className="delete-chat-btn"
+  onClick={(e) => { e.stopPropagation(); deleteChat(id); }}
+  title={t.deleteChat}
+  aria-label={t.deleteChat}
+>
+  ×
+</button>
+
                 </li>
               );
             })}
           </ul>
         </aside>
 {historyCollapsed && (
-  <button
-    className="reveal-history-btn"
-    onClick={() => setHistoryCollapsed(false)}
-    aria-label="Afficher l'historique"
-    title="Afficher l'historique"
-    type="button"
-  >
-    ❯
-  </button>
+ <button
+  className="reveal-history-btn"
+  onClick={() => setHistoryCollapsed(false)}
+  aria-label={t.showHistory}
+  title={t.showHistory}
+  type="button"
+>
+  ❯
+</button>
+
 )}
 
         {/* MAIN COLUMN (centered narrow column) */}
@@ -429,35 +509,82 @@ function Chatbot() {
           <div className="chat-main-inner">
             {/* REPLACED PersonaSelector with a simple dropdown */}
             <div className="persona-row">
-              <label htmlFor="personaSelect" className="persona-label">Persona</label>
-              <select
-                id="personaSelect"
-                className="persona-select"
-                value={selectedPersona}
-                onChange={(e) => setSelectedPersona(e.target.value)}
-              >
-                {Object.keys(personas).map((key) => (
-                  <option key={key} value={key}>
-                    {personaLabel(key)}
-                  </option>
-                ))}
-              </select>
+<label htmlFor="personaSelect" className="persona-label">{t.persona}</label>
+<div style={{ flex: 1 }}>
+<Select
+  key={darkMode ? 'dark' : 'light'} 
+  classNamePrefix="persona"
+  inputId="personaSelect"
+  options={personaOptions}
+  value={personaOptions.find(opt => opt.value === selectedPersona)}
+  onChange={opt => setSelectedPersona(opt.value)}
+  isSearchable={false}
+  styles={{
+    control: base => ({
+      ...base,
+      minHeight: 46,
+      fontWeight: 700,
+      fontSize: '1.09rem',
+      boxShadow: '0 3px 12px 0 rgba(79, 70, 229, 0.07)',
+      borderColor: darkMode ? '#a5b4fc' : '#4f46e5',
+      background: darkMode
+        ? 'linear-gradient(90deg, #242449 0%, #232342 100%)'
+        : 'linear-gradient(90deg, #ede9fe 0%, #f5f3ff 100%)',
+      color: darkMode ? '#a5b4fc' : '#23232a',
+      borderRadius: 22,
+    }),
+    option: (base, state) => ({
+      ...base,
+      background: state.isFocused
+        ? (darkMode ? '#303075' : '#ede9fe')
+        : (darkMode ? '#232342' : '#fff'),
+      color: state.isSelected
+        ? '#fff'
+        : (darkMode ? '#a5b4fc' : '#23232a'),
+      fontWeight: state.isSelected ? 800 : 600,
+    }),
+    singleValue: base => ({
+      ...base,
+      fontWeight: 800,
+      fontSize: '1.13rem',
+    }),
+    menu: base => ({
+      ...base,
+      borderRadius: 18,
+      background: darkMode ? '#232342' : '#fff',
+      boxShadow: '0 4px 22px 0 rgba(80,90,255,0.10)',
+    }),
+  }}
+/>
+
+</div>
+
             </div>
 
             {/* message stream */}
             <div className="chat-history">
               {messages.map((msg, idx) => (
-                <div key={idx} className={`msg ${msg.role}`}>
-                  <span style={{ fontWeight: 'bold' }}>
-                    {msg.role === 'user' ? `${t.you}:` : `${t.bot}:`}
-                  </span>
-                  <ReactMarkdown
-                    children={msg.content}
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw]}
-                  />
-                </div>
-              ))}
+  <div key={idx} className={`msg ${msg.role}`}>
+    <span style={{ fontWeight: 'bold' }}>
+      {msg.role === 'user' ? `${t.you}:` : `${t.bot}:`}
+    </span>
+    <ReactMarkdown
+      children={msg.content}
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeRaw]}
+    />
+    {msg.files && msg.files.length > 0 && (
+      <div className="file-preview">
+        {msg.files.map((f) => (
+          <span key={f.name} className="file-pill">
+            {(FILE_ICONS[f.type] || '📎')} {f.name}
+          </span>
+        ))}
+      </div>
+    )}
+  </div>
+))}
+
               {partialResponse && (
                 <div className="msg assistant">
                   <span>{t.bot}: </span>
@@ -481,7 +608,7 @@ function Chatbot() {
                 if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
               }}
             >
-              <label className="paperclip-icon" title="Upload files">
+<label className="paperclip-icon" title={t.uploadFiles} aria-label={t.uploadFiles}>
                 📎
                 <input
                   type="file"
@@ -515,7 +642,7 @@ function Chatbot() {
                 {uploadedFiles.map((f) => (
                   <span key={f.name} className="file-pill">
                     {(FILE_ICONS[f.type] || '📎')} {f.name}
-                    <button onClick={() => removeFile(f.name)} aria-label={`Remove ${f.name}`}>🗑️</button>
+<button onClick={() => removeFile(f.name)} aria-label={`${t.remove} ${f.name}`}>🗑️</button>
                   </span>
                 ))}
               </div>
@@ -525,6 +652,14 @@ function Chatbot() {
           </div>
         </main>
       </div>
+      {isDragging && (
+        <div className="global-drag-overlay">
+          <div className="global-drag-overlay-inner">
+            <span className="global-drag-icon">📁</span>
+<span className="global-drag-text">{t.dropHere}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
