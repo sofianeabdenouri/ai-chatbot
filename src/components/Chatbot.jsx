@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import Select from 'react-select';
+import logo from '../assets/logo.png';
 
 // >>>>>>>>>>>>> pdf.js worker (Vite + pdfjs v5) <<<<<<<<<<<<<
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
@@ -409,6 +410,8 @@ setFileError(`${t.errorDocx}: ${err?.message || err}`);
     <div className="chatbot-container">
       {/* HEADER */}
       <header className="chat-header">
+            <img src={logo} alt="Chatter AI logo" className="chat-logo" />
+
 <h1 className="chat-title">{t.appTitle}</h1>
         <div className="header-actions">
         <button
