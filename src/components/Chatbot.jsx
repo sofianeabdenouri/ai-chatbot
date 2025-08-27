@@ -420,19 +420,20 @@ setFileError(`${t.errorDocx}: ${err?.message || err}`);
   title={t.langToggleTooltip}
   aria-label={t.langToggleAria}
 >
-  🌐 {t.langShort}
+  <img src="/globe.png" alt="Language" className="icon" /> {t.langShort}
 </button>
 
 
 
-<button onClick={exportChat} className="export-button">💾 {t.export}</button>
+<button onClick={exportChat} className="export-button">  <img src="/disk.png" alt="Save" className="icon" /> {t.export}
+</button>
           <button
   onClick={() => setMuted(prev => !prev)}
   className="mute-toggle"
   title={muted ? t.unmute : t.mute}
   aria-label={muted ? t.unmute : t.mute}
 >
-  {muted ? '🔇' : '🔊'}
+  <img src={muted ? "/mute.png" : "/speaker.png"} alt="Mute toggle" className="icon" />
 </button>
 
          <button
@@ -441,7 +442,7 @@ setFileError(`${t.errorDocx}: ${err?.message || err}`);
   title={darkMode ? t.themeDark : t.themeLight}
   aria-label={darkMode ? t.themeDark : t.themeLight}
 >
-  {darkMode ? '🌙' : '☀️'}
+  <img src={darkMode ? "/moon.png" : "/sun.png"} alt="Theme toggle" className="icon" />
 </button>
 
         </div>
@@ -612,7 +613,7 @@ setFileError(`${t.errorDocx}: ${err?.message || err}`);
               }}
             >
 <label className="paperclip-icon" title={t.uploadFiles} aria-label={t.uploadFiles}>
-                📎
+  <img src="/paperclip.png" alt="Attach file" className="icon" />
                 <input
                   type="file"
                   multiple
@@ -658,7 +659,7 @@ setFileError(`${t.errorDocx}: ${err?.message || err}`);
       {isDragging && (
         <div className="global-drag-overlay">
           <div className="global-drag-overlay-inner">
-            <span className="global-drag-icon">📁</span>
+  <img src="/folder.png" alt="Drag files here" className="icon" />
 <span className="global-drag-text">{t.dropHere}</span>
           </div>
         </div>

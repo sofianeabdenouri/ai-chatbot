@@ -733,3 +733,43 @@ body.dark .persona__dropdown-indicator svg {
   width: 50px;
   height: 50px;
 }
+/* Uniformiser la taille des icônes dans header, boutons, labels */
+.icon {
+  width: 50px;     /* ajuste la taille globale */
+  height: 50px;
+  object-fit: contain;
+  display: inline-block;
+}
+
+/* Si utilisées dans les boutons du header */
+.header-actions .icon {
+  margin-right: 6px;
+}
+
+/* Si utilisées dans paperclip label */
+.paperclip-icon .icon {
+  width:50px;
+  height: 50px;
+  margin-right: 4px;
+}
+.paperclip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 50%;
+  padding: 6px;
+  transition: background var(--transition), transform var(--transition), color var(--transition);
+}
+
+/* hover in light mode */
+.paperclip-icon:hover {
+  background: #e0e7ff;
+  transform: scale(1.08);
+}
+
+/* hover in dark mode */
+body.dark .paperclip-icon:hover {
+  background: #2e3459;
+}
